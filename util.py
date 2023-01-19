@@ -1,14 +1,31 @@
 import numpy as np
 import math
+from copy import deepcopy
 
-def xai_eval_fnc(model, relevence, input_x, model_type='grud', percentile=90,
+def xai_eval_fnc(model, relevence, input_x, model_type='lstm', percentile=90,
                  eval_type='prtb', seq_len=10, by='all'):
+    """
+    Evaluates the quality metrics of time-series importance scores using various evaluation methods.
+
+    Parameters
+    ----------
+    model : prediction model that is explained 
+    relevance : A 3D array of importance scores for each time step of the time-series data
+    input_x : input data of the prediction model. If the input data consists of different modalities, the first module should be a 3D time series data
+    model_type (optional) : type of model, either 'lstm' or 'lstm_plus'. Use 'lstm' when the time series data is the only modality of the input, otherwise use 'lstm_plus'
+    percentile (optional) : percentile of top time steps that are going to be pertubed
+    eval_type (optional) : evaluation method, either 'prtb' for the perturbation analysis metric or 'sqnc' for sequence analysis metric
+    seq_len (optional) : sequence length for 'sqnc' method
+    by (optional) : whether to evaluate each temporal feature separately or all time steps together, either 'time' or 'all'
+
+    Returns : prediction of the modified input time-series data using the input model
+    """
     
     input_new = deepcopy(input_x)
     relevence = np.absolute(relevence)
     
     # TO DO: Add other type of models
-    if model_type == 'grud':
+    if model_type == 'lstm_plus':
         input_ts = input_x[0]
         input_new_ts = input_new[0]
     elif model_type == 'lstm':
@@ -43,13 +60,26 @@ def xai_eval_fnc(model, relevence, input_x, model_type='grud', percentile=90,
                 if top_indices_mask[p, t, v]:
                     if eval_type == 'prtb':
                         input_new_ts[p,t,v] = np.max(input_ts[p,:,v]) - input_ts[p,t,v]
-                    elif eval_type == 'sqnc_eval':
+                    elif eval_type == 'sqnc':
                         input_new_ts[p, t:t + seq_len, v] = 0
     
     return model.predict(input_new)
 
 
 def heat_map(start, stop, x, shap_values, var_name='Feature 1', plot_type='bar', title=None):
+    """
+    A function that generates a heatmap with the temporal sequence alongside its Shapley values
+
+    Parameters
+    ----------
+    start (int): the starting point of the temporal sequence
+    stop (int): the ending point of the temporal sequence
+    x (np.ndarray): the sequence data
+    shap_values (np.ndarray): the Shapley values corresponding to the sequence data
+    var_name (str): the name of the variable being plotted (default: 'Feature 1')
+    plot_type (str): the type of plot to generate ('bar' or 'heat' or 'heat_abs', default: 'bar')
+    title (str): the title for the plot (default: None)
+    """
     import matplotlib.pyplot as plt
     from matplotlib.colors import LinearSegmentedColormap
     from matplotlib.colors import BoundaryNorm
