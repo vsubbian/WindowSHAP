@@ -1,0 +1,5 @@
+1. Find datasets, download
+2. Refactor
+3. Adapt rupture lib https://centre-borelli.github.io/ruptures-docs/ , https://www.kaggle.com/code/nabeelvalley/change-point-detection-with-ruptures
+4. Prepare windows for adding attention
+5. Get knopwledge of time-series
