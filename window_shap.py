@@ -2,10 +2,10 @@ import numpy as np
 import shap
 
 
-def data_prepare(ts_x, num_dem_ftr, num_window, num_ts_ftr = None, start_idx=0):
+def data_prepare(ts_x, num_dem_ftr, num_window, num_ts_ftr=None, start_idx=0):
     """returns prepared data for SHAP"""
-    total_num_features = num_dem_ftr + num_ts_ftr * num_window if num_ts_ftr\
-                             else num_dem_ftr + sum(num_window)
+    total_num_features = num_dem_ftr + num_ts_ftr * num_window if num_ts_ftr \
+        else num_dem_ftr + sum(num_window)
 
     x_ = [[i] * total_num_features for i in range(start_idx, start_idx + ts_x.shape[0])]
 
@@ -14,6 +14,7 @@ def data_prepare(ts_x, num_dem_ftr, num_window, num_ts_ftr = None, start_idx=0):
 
 class SHAP():
     """Template for SHAP descendants. Accumulates common fields and methods."""
+
     def __init__(self, model, B_ts, test_ts, num_window, B_mask=None, B_dem=None,
                  test_mask=None, test_dem=None, model_type='lstm'):
         self.model = model
@@ -41,25 +42,22 @@ class SHAP():
         self.all_dem = None if test_dem is None else np.concatenate(
             (B_dem, test_dem), axis=0)
 
-
     def prepare_data(self, B_ts, test_ts):
         """prepares SHAP data."""
-        self.background_data = data_prepare(B_ts, self.num_dem_ftr, 
+        self.background_data = data_prepare(B_ts, self.num_dem_ftr,
                                             self.num_window,
                                             start_idx=0)
-        self.test_data = data_prepare(test_ts, self.num_dem_ftr, 
+        self.test_data = data_prepare(test_ts, self.num_dem_ftr,
                                       self.num_window, start_idx=len(B_ts))
 
     def get_ts_x_(self, x):
         """returns ts_x_ (with _)"""
         return np.zeros((x.shape[0], self.all_ts.shape[1], self.all_ts.shape[2]))
 
-
     def get_ts_x(self, x):
         """returns ts_x."""
         ts_x = x[:, self.num_dem_ftr:].copy()
         return ts_x.reshape((ts_x.shape[0], self.num_window, self.num_ts_ftr))
-
 
     def create_static_data(self, dem_x, dem_x_, i):
         """returns dem_x_ (with _)"""
@@ -71,7 +69,6 @@ class SHAP():
 
     def get_wind_t(self, t, start_ind=0):
         """template for descendants."""
-
 
     def creating_data(self, x, ts_x, ts_x_, mask_x_, start_ind=0):
         """returns filled ts_x_, mask_x_"""
@@ -88,7 +85,7 @@ class SHAP():
     def get_tstep(self, x):
         """returns tstep"""
         return np.ones((x.shape[0], self.num_ts_step, 1)) * \
-               np.reshape(np.arange(0, self.num_ts_step), (1, self.num_ts_step, 1))
+            np.reshape(np.arange(0, self.num_ts_step), (1, self.num_ts_step, 1))
 
     def get_model_inputs(self, x, start_ind=0):
         """returns model input for delivered possible models."""
@@ -101,7 +98,6 @@ class SHAP():
         ts_x_, mask_x_ = self.creating_data(x, ts_x, ts_x_, mask_x_, start_ind)
         return ts_x_, dem_x_, mask_x_, tstep
 
-
     def wrapper_predict(self, x, start_ind=0):
         """predicts for delivered model."""
         ts_x_, dem_x_, mask_x_, tstep = self.get_model_inputs(x, start_ind)
@@ -113,10 +109,10 @@ class SHAP():
 
 
 class StationaryWindowSHAP(SHAP):
-    """StationaryWindowSHAP - SHAP with established winow_len"""
+    """StationaryWindowSHAP - SHAP with established window_len"""
+
     def __init__(self, model, window_len, B_ts, test_ts, B_mask=None, B_dem=None,
                  test_mask=None, test_dem=None, model_type='lstm'):
-
         num_window = np.ceil(B_ts.shape[1] / window_len).astype('int')
         self.window_len = window_len
 
@@ -125,10 +121,8 @@ class StationaryWindowSHAP(SHAP):
 
         self.prepare_data(B_ts, test_ts)
 
-
     def get_wind_t(self, t, start_ind=0):
         return np.ceil((t + 1) / self.window_len).astype('int') - 1
-
 
     def shap_values(self, num_output=1):
         """ shap values for Static Window"""
@@ -154,6 +148,7 @@ class StationaryWindowSHAP(SHAP):
 
 class SlidingWindowSHAP(SHAP):
     """SlidingWindowSHAP class"""
+
     def __init__(self, model, stride, window_len, B_ts, test_ts, B_mask=None,
                  B_dem=None, test_mask=None, test_dem=None, model_type='lstm'):
 
@@ -161,20 +156,17 @@ class SlidingWindowSHAP(SHAP):
         num_window = 2
         self.window_len = window_len
 
-        super().__init__(model, B_ts, test_ts, num_window, B_mask, 
-                       B_dem, test_mask, test_dem, model_type)
+        super().__init__(model, B_ts, test_ts, num_window, B_mask,
+                         B_dem, test_mask, test_dem, model_type)
 
         self.prepare_data(B_ts, test_ts)
-
 
     def get_ts_x_(self, x):
         return np.zeros((x.shape[0], self.num_ts_step, self.num_ts_ftr))
 
-
     def get_wind_t(self, t, start_ind):
         inside_ind = list(range(start_ind, start_ind + self.window_len))
         return 0 if (t in inside_ind) else 1
-
 
     def shap_values(self, num_output=1, nsamples='auto'):
         """shap values for sliding window"""
@@ -225,16 +217,17 @@ class SlidingWindowSHAP(SHAP):
 
 class DynamicWindowSHAP(SHAP):
     """DynamicWindowSHAP class"""
+
     def __init__(self, model, delta, n_w, B_ts, test_ts, B_mask=None, B_dem=None,
                  test_mask=None, test_dem=None, model_type='lstm'):
 
         num_window = [1] * self.num_ts_ftr
-        self.split_points = [[self.num_ts_step - 1]] * self.num_ts_ftr 
+        self.split_points = [[self.num_ts_step - 1]] * self.num_ts_ftr
         self.delta = delta
         self.n_w = n_w
 
         super().__init__(model, B_ts, test_ts, num_window, B_mask,
-                       B_dem, test_mask, test_dem, model_type)
+                         B_dem, test_mask, test_dem, model_type)
 
         self.background_data = data_prepare(B_ts, self.num_dem_ftr,
                                             self.num_window,
@@ -244,9 +237,9 @@ class DynamicWindowSHAP(SHAP):
                                       self.num_window,
                                       self.num_ts_ftr,
                                       len(B_ts))
-    def get_ts_x_(self, x): 
-        return np.zeros((x.shape[0], self.num_ts_step, self.num_ts_ftr))
 
+    def get_ts_x_(self, x):
+        return np.zeros((x.shape[0], self.num_ts_step, self.num_ts_ftr))
 
     def get_ts_x(self, x):
         ts_x = x[:, self.num_dem_ftr:].copy()
@@ -257,11 +250,9 @@ class DynamicWindowSHAP(SHAP):
                 self.num_window[:i + 1])]
         return temp_ts_x
 
-
     def get_tstep(self, x):
         return np.ones((x.shape[0], self.num_ts_step, 1)) * \
-               np.reshape(np.arange(0, self.num_ts_step), (1, self.num_ts_step, 1))
-
+            np.reshape(np.arange(0, self.num_ts_step), (1, self.num_ts_step, 1))
 
     def creating_data(self, x, ts_x, ts_x_, mask_x_, start_ind=0):
         for i in range(x.shape[0]):
@@ -276,7 +267,6 @@ class DynamicWindowSHAP(SHAP):
                     mask_x_[i, t, j] = None if self.all_mask is None else self.all_mask[ind, t, j]
         return ts_x_, mask_x_
 
-
     def shap_values(self, num_output=1, nsamples_in_loop='auto', nsamples_final='auto'):
         """shap value for dynamic window."""
         while True:
@@ -286,13 +276,13 @@ class DynamicWindowSHAP(SHAP):
 
             # Updating converted data for SHAP
             self.background_data = data_prepare(self.B_ts, self.num_dem_ftr,
-                                            self.num_window,
-                                            self.num_ts_ftr)
+                                                self.num_window,
+                                                self.num_ts_ftr)
             self.test_data = data_prepare(self.test_ts,
-                                      self.num_dem_ftr,
-                                      self.num_window,
-                                      self.num_ts_ftr,
-                                      len(self.B_ts))
+                                          self.num_dem_ftr,
+                                          self.num_window,
+                                          self.num_ts_ftr,
+                                          len(self.B_ts))
 
             # Running SHAP
             if nsamples_in_loop == 'auto':
@@ -337,7 +327,7 @@ class DynamicWindowSHAP(SHAP):
                 end_ind = self.split_points[i][j] + int((j + 1) / self.num_window[i])
                 ts_phi[0, start_ind:end_ind, i] = ts_shap_values[0, :,
                                                   sum(self.num_window[:i]) + j] / (
-                                                              end_ind - start_ind)
+                                                          end_ind - start_ind)
         self.dem_phi = dem_phi
         self.ts_phi = ts_phi
 
