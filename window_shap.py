@@ -2,9 +2,9 @@ import numpy as np
 import shap
 
 
-def data_prepare(ts_x, num_dem_ftr, num_window, num_ts_ftr=None, start_idx=0):
+def data_prepare(ts_x, num_dem_ftr, num_window, num_ts_ftr=None, start_idx=0, dynamic=False):
     """returns prepared data for SHAP"""
-    total_num_features = num_dem_ftr + num_ts_ftr * num_window if num_ts_ftr \
+    total_num_features = num_dem_ftr + num_ts_ftr * num_window if not dynamic \
         else num_dem_ftr + sum(num_window)
 
     x_ = [[i] * total_num_features for i in range(start_idx, start_idx + ts_x.shape[0])]
@@ -47,11 +47,11 @@ class SHAP():
         self.background_data = data_prepare(B_ts,
                                             self.num_dem_ftr,
                                             self.num_window,
-                                            self.num_ts_ftr)
+                                            num_ts_ftr=self.num_ts_ftr)
         self.test_data = data_prepare(test_ts,
                                       self.num_dem_ftr,
                                       self.num_window,
-                                      self.num_ts_ftr,
+                                      num_ts_ftr=self.num_ts_ftr,
                                       start_idx=len(B_ts))
 
     def get_ts_x_(self, x):
@@ -117,6 +117,7 @@ class StationaryWindowSHAP(SHAP):
 
     def __init__(self, model, window_len, B_ts, test_ts, B_mask=None, B_dem=None,
                  test_mask=None, test_dem=None, model_type='lstm'):
+
         num_window = np.ceil(B_ts.shape[1] / window_len).astype('int')
         self.window_len = window_len
 
@@ -125,8 +126,10 @@ class StationaryWindowSHAP(SHAP):
 
         self.prepare_data(B_ts, test_ts)
 
+
     def get_wind_t(self, t, start_ind=0):
         return np.ceil((t + 1) / self.window_len).astype('int') - 1
+
 
     def shap_values(self, num_output=1):
         """ shap values for Static Window"""
