@@ -11,7 +11,7 @@ def data_prepare(ts_x, num_dem_ftr, num_window, num_ts_ftr=None, start_idx=0):
 
     return np.array(x_)
 
-
+    
 class SHAP():
     """Template for SHAP descendants. Accumulates common fields and methods."""
 
@@ -44,11 +44,15 @@ class SHAP():
 
     def prepare_data(self, B_ts, test_ts):
         """prepares SHAP data."""
-        self.background_data = data_prepare(B_ts, self.num_dem_ftr,
+        self.background_data = data_prepare(B_ts,
+                                            self.num_dem_ftr,
                                             self.num_window,
-                                            start_idx=0)
-        self.test_data = data_prepare(test_ts, self.num_dem_ftr,
-                                      self.num_window, start_idx=len(B_ts))
+                                            self.num_ts_ftr)
+        self.test_data = data_prepare(test_ts,
+                                      self.num_dem_ftr,
+                                      self.num_window,
+                                      self.num_ts_ftr,
+                                      start_idx=len(B_ts))
 
     def get_ts_x_(self, x):
         """returns ts_x_ (with _)"""
