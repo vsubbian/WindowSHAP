@@ -42,17 +42,17 @@ class SHAP():
         self.all_dem = None if test_dem is None else np.concatenate(
             (B_dem, test_dem), axis=0)
 
-    def prepare_data(self, B_ts, test_ts):
+    def prepare_data(self):
         """prepares SHAP data."""
-        self.background_data = data_prepare(B_ts,
+        self.background_data = data_prepare(self.B_ts,
                                             self.num_dem_ftr,
                                             self.num_window,
                                             num_ts_ftr=self.num_ts_ftr)
-        self.test_data = data_prepare(test_ts,
+        self.test_data = data_prepare(self.test_ts,
                                       self.num_dem_ftr,
                                       self.num_window,
                                       num_ts_ftr=self.num_ts_ftr,
-                                      start_idx=len(B_ts))
+                                      start_idx=len(self.B_ts))
 
     def get_ts_x_(self, x):
         """returns ts_x_ (with _)"""
@@ -124,7 +124,7 @@ class StationaryWindowSHAP(SHAP):
         super().__init__(model, B_ts, test_ts, num_window, B_mask,
                          B_dem, test_mask, test_dem, model_type)
 
-        self.prepare_data(B_ts, test_ts)
+        self.prepare_data()
 
 
     def get_wind_t(self, t, start_ind=0):
@@ -166,7 +166,7 @@ class SlidingWindowSHAP(SHAP):
         super().__init__(model, B_ts, test_ts, num_window, B_mask,
                          B_dem, test_mask, test_dem, model_type)
 
-        self.prepare_data(B_ts, test_ts)
+        self.prepare_data()
 
     def get_ts_x_(self, x):
         return np.zeros((x.shape[0], self.num_ts_step, self.num_ts_ftr))
@@ -236,14 +236,7 @@ class DynamicWindowSHAP(SHAP):
         super().__init__(model, B_ts, test_ts, num_window, B_mask,
                          B_dem, test_mask, test_dem, model_type)
 
-        self.background_data = data_prepare(B_ts, self.num_dem_ftr,
-                                            self.num_window,
-                                            self.num_ts_ftr)
-        self.test_data = data_prepare(test_ts,
-                                      self.num_dem_ftr,
-                                      self.num_window,
-                                      self.num_ts_ftr,
-                                      len(B_ts))
+        self.prepare_data()
 
     def get_ts_x_(self, x):
         return np.zeros((x.shape[0], self.num_ts_step, self.num_ts_ftr))
