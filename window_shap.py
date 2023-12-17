@@ -58,6 +58,7 @@ class SHAP():
         """returns ts_x_ (with _)"""
         return np.zeros((x.shape[0], self.all_ts.shape[1], self.all_ts.shape[2]))
 
+
     def get_ts_x(self, x):
         """returns ts_x."""
         ts_x = x[:, self.num_dem_ftr:].copy()
@@ -91,6 +92,7 @@ class SHAP():
         return np.ones((x.shape[0], self.num_ts_step, 1)) * \
             np.reshape(np.arange(0, self.num_ts_step), (1, self.num_ts_step, 1))
 
+
     def get_model_inputs(self, x, start_ind=0):
         """returns model input for delivered possible models."""
         dem_x, ts_x = x[:, :self.num_dem_ftr].copy(), x[:, self.num_dem_ftr:].copy()
@@ -109,7 +111,7 @@ class SHAP():
         model_dict = {'lstm_dem': [ts_x_, dem_x_],
                       'grud': [ts_x_, mask_x_, tstep],
                       'lstm': ts_x_}
-        self.model.predict(model_dict[self.model_type])
+        return self.model.predict(model_dict[self.model_type])
 
 
 class StationaryWindowSHAP(SHAP):
@@ -228,15 +230,27 @@ class DynamicWindowSHAP(SHAP):
     def __init__(self, model, delta, n_w, B_ts, test_ts, B_mask=None, B_dem=None,
                  test_mask=None, test_dem=None, model_type='lstm'):
 
-        num_window = [1] * self.num_ts_ftr
-        self.split_points = [[self.num_ts_step - 1]] * self.num_ts_ftr
         self.delta = delta
         self.n_w = n_w
-
+        num_window = [1] * B_ts.shape[2]
         super().__init__(model, B_ts, test_ts, num_window, B_mask,
                          B_dem, test_mask, test_dem, model_type)
 
+<<<<<<< HEAD
+        self.split_points = [[self.num_ts_step - 1]] * self.num_ts_ftr
+        self.background_data = data_prepare(B_ts, self.num_dem_ftr,
+                                            self.num_window,
+                                            self.num_ts_ftr,
+                                            dynamic=True)
+        self.test_data = data_prepare(test_ts,
+                                      self.num_dem_ftr,
+                                      self.num_window,
+                                      self.num_ts_ftr,
+                                      len(B_ts),
+                                      dynamic=True)
+=======
         self.prepare_data()
+>>>>>>> 9116fec0dd34c5152f70f61130fe3aee06fa2173
 
     def get_ts_x_(self, x):
         return np.zeros((x.shape[0], self.num_ts_step, self.num_ts_ftr))
@@ -277,12 +291,14 @@ class DynamicWindowSHAP(SHAP):
             # Updating converted data for SHAP
             self.background_data = data_prepare(self.B_ts, self.num_dem_ftr,
                                                 self.num_window,
-                                                self.num_ts_ftr)
+                                                self.num_ts_ftr,
+                                                dynamic=True)
             self.test_data = data_prepare(self.test_ts,
                                           self.num_dem_ftr,
                                           self.num_window,
                                           self.num_ts_ftr,
-                                          len(self.B_ts))
+                                          len(self.B_ts),
+                                          dynamic=True)
 
             # Running SHAP
             if nsamples_in_loop == 'auto':
