@@ -11,7 +11,7 @@ def data_prepare(ts_x, num_dem_ftr, num_window, num_ts_ftr=None, start_idx=0, dy
 
     return np.array(x_)
 
-    
+
 class SHAP():
     """Template for SHAP descendants. Accumulates common fields and methods."""
 
@@ -236,7 +236,6 @@ class DynamicWindowSHAP(SHAP):
         super().__init__(model, B_ts, test_ts, num_window, B_mask,
                          B_dem, test_mask, test_dem, model_type)
 
-<<<<<<< HEAD
         self.split_points = [[self.num_ts_step - 1]] * self.num_ts_ftr
         self.background_data = data_prepare(B_ts, self.num_dem_ftr,
                                             self.num_window,
@@ -248,9 +247,6 @@ class DynamicWindowSHAP(SHAP):
                                       self.num_ts_ftr,
                                       len(B_ts),
                                       dynamic=True)
-=======
-        self.prepare_data()
->>>>>>> 9116fec0dd34c5152f70f61130fe3aee06fa2173
 
     def get_ts_x_(self, x):
         return np.zeros((x.shape[0], self.num_ts_step, self.num_ts_ftr))
@@ -283,13 +279,17 @@ class DynamicWindowSHAP(SHAP):
 
     def shap_values(self, num_output=1, nsamples_in_loop='auto', nsamples_final='auto'):
         """shap value for dynamic window."""
-        while True:
+
+        flag = 1
+        while flag:
+            flag = 0
 
             # Updating the number of time windows for each time series feature
             self.num_window = [len(self.split_points[i]) for i in range(self.num_ts_ftr)]
 
             # Updating converted data for SHAP
-            self.background_data = data_prepare(self.B_ts, self.num_dem_ftr,
+            self.background_data = data_prepare(self.B_ts, 
+                                                self.num_dem_ftr,
                                                 self.num_window,
                                                 self.num_ts_ftr,
                                                 dynamic=True)
@@ -322,6 +322,7 @@ class DynamicWindowSHAP(SHAP):
                         S.add(int(self.split_points[i][j] / 2) if j == 0 else int(
                             (self.split_points[i][j - 1] + self.split_points[i][j]) / 2))
                 if set(S) != set(self.split_points[i]):
+                    flag = 1
                     self.split_points[i] = list(S)
                     self.split_points[i].sort()
                     break

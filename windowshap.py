@@ -434,7 +434,7 @@ class DynamicWindowSHAP():
                         S.add(int(self.split_points[i][j] / 2) if j == 0 else int(
                             (self.split_points[i][j - 1] + self.split_points[i][j]) / 2))
                 if set(S) != set(self.split_points[i]):
-                    flag += 1
+                    ć
                     self.split_points[i] = list(S)
                     self.split_points[i].sort()
 
