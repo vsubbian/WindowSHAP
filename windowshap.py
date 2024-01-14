@@ -10,7 +10,7 @@ class StationaryWindowSHAP():
     '''
     A class for computing the shapely values for time sereis data. Only the shap values for the first output
     is reported.
-    
+
     Parameters:
     model: A model object that will be used for prediction. The model object must have a method called predict() which produces the model output for a given input
     window_len: The length of the window for the algorithm
@@ -99,7 +99,7 @@ class StationaryWindowSHAP():
                 ind = dem_x[i, j]
                 dem_x_[i, j] = None if self.all_dem is None else self.all_dem[ind, j]
 
-        # Creating the input of the model based on the different models. 
+        # Creating the input of the model based on the different models.
         # This part should be updated as new models get involved in the project
         if self.model_type == 'lstm_dem':
             model_input = [ts_x_, dem_x_]
@@ -135,7 +135,7 @@ class SlidingWindowSHAP():
     '''
     A class for computing the shapely values for time sereis data. Only the shap values for the first output
     is reported.
-    
+
     Parameters:
     model: A model object that will be used for prediction. The model object must have a method called predict() which produces the model output for a given input
     stride: The stride parameter for the Sliding WindowSHAP algorithm
@@ -229,7 +229,7 @@ class SlidingWindowSHAP():
                 ind = dem_x[i, j]
                 dem_x_[i, j] = None if self.all_dem is None else self.all_dem[ind, j]
 
-        # Creating the input of the model based on the different models. 
+        # Creating the input of the model based on the different models.
         # This part should be updated as new models get involved in the project
         if self.model_type == 'lstm_dem':
             model_input = [ts_x_, dem_x_]
@@ -288,7 +288,7 @@ class DynamicWindowSHAP():
     '''
     A class for computing the shapely values for time sereis data. Only the shap values for the first output
     is reported.
-    
+
     Parameters:
     model: A model object that will be used for prediction. The model object must have a method called predict() which produces the model output for a given input
     delta: The treshold value in Dynamic WindowSHAP algorithm
@@ -388,7 +388,7 @@ class DynamicWindowSHAP():
                 ind = dem_x[i, j]
                 dem_x_[i, j] = None if self.all_dem is None else self.all_dem[ind, j]
 
-        # Creating the input of the model based on the different models. 
+        # Creating the input of the model based on the different models.
         # This part should be updated as new models get involved in the project
         if self.model_type == 'lstm_dem':
             model_input = [ts_x_, dem_x_]
@@ -434,7 +434,7 @@ class DynamicWindowSHAP():
                         S.add(int(self.split_points[i][j] / 2) if j == 0 else int(
                             (self.split_points[i][j - 1] + self.split_points[i][j]) / 2))
                 if set(S) != set(self.split_points[i]):
-                    ć
+                    flag += 1
                     self.split_points[i] = list(S)
                     self.split_points[i].sort()
 

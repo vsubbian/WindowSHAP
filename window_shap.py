@@ -42,17 +42,19 @@ class SHAP():
         self.all_dem = None if test_dem is None else np.concatenate(
             (B_dem, test_dem), axis=0)
 
-    def prepare_data(self):
+    def prepare_data(self, dynamic=False):
         """prepares SHAP data."""
         self.background_data = data_prepare(self.B_ts,
                                             self.num_dem_ftr,
                                             self.num_window,
-                                            num_ts_ftr=self.num_ts_ftr)
+                                            num_ts_ftr=self.num_ts_ftr,
+                                            dynamic=dynamic)
         self.test_data = data_prepare(self.test_ts,
                                       self.num_dem_ftr,
                                       self.num_window,
                                       num_ts_ftr=self.num_ts_ftr,
-                                      start_idx=len(self.B_ts))
+                                      start_idx=len(self.B_ts),
+                                      dynamic=dynamic)
 
     def get_ts_x_(self, x):
         """returns ts_x_ (with _)"""
@@ -236,17 +238,9 @@ class DynamicWindowSHAP(SHAP):
         super().__init__(model, B_ts, test_ts, num_window, B_mask,
                          B_dem, test_mask, test_dem, model_type)
 
-        self.split_points = [[self.num_ts_step - 1]] * self.num_ts_ftr
-        self.background_data = data_prepare(B_ts, self.num_dem_ftr,
-                                            self.num_window,
-                                            self.num_ts_ftr,
-                                            dynamic=True)
-        self.test_data = data_prepare(test_ts,
-                                      self.num_dem_ftr,
-                                      self.num_window,
-                                      self.num_ts_ftr,
-                                      len(B_ts),
-                                      dynamic=True)
+        self.split_points = [[self.num_ts_step - 1]] * self.num_ts_ftr  # Splitting points
+
+        self.prepare_data(dynamic=True)
 
     def get_ts_x_(self, x):
         return np.zeros((x.shape[0], self.num_ts_step, self.num_ts_ftr))
@@ -322,7 +316,7 @@ class DynamicWindowSHAP(SHAP):
                         S.add(int(self.split_points[i][j] / 2) if j == 0 else int(
                             (self.split_points[i][j - 1] + self.split_points[i][j]) / 2))
                 if set(S) != set(self.split_points[i]):
-                    flag = 1
+                    flag += 1
                     self.split_points[i] = list(S)
                     self.split_points[i].sort()
                     break
