@@ -1,6 +1,6 @@
 import numpy as np
 import shap
-
+import ruptures as rpt
 
 def data_prepare(ts_x, num_dem_ftr, num_window, num_ts_ftr=None, start_idx=0, dynamic=False):
     """returns prepared data for SHAP"""
@@ -319,7 +319,6 @@ class DynamicWindowSHAP(SHAP):
                     flag += 1
                     self.split_points[i] = list(S)
                     self.split_points[i].sort()
-                    break
 
         # Running SHAP with large number of samples for the final evaluation of Shapely values
         self.explainer = shap.KernelExplainer(self.wrapper_predict, self.background_data)
