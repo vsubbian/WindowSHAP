@@ -342,3 +342,148 @@ class DynamicWindowSHAP(SHAP):
         self.ts_phi = ts_phi
 
         return ts_phi if self.num_dem_ftr == 0 else (dem_phi, ts_phi)
+
+class RupturesDynamicWindowSHAP(SHAP):
+    """RupturesDynamicWindowSHAP class"""
+
+    def __init__(self, model, delta, n_w, B_ts, test_ts, B_mask=None, B_dem=None,
+                 test_mask=None, test_dem=None, model_type='lstm', rpt_search="Pelt", rpt_pen=3,
+                 rpt_model='rbf', n_bkps=3):
+
+        # Ruptures setting
+        self.rpt_search = rpt_search
+        self.rpt_pen = rpt_pen
+        self.rpt_model = rpt_model
+        self.n_bkps = n_bkps
+
+        self.delta = delta
+        self.n_w = n_w
+        num_window = [1] * B_ts.shape[2]
+        super().__init__(model, B_ts, test_ts, num_window, B_mask,
+                         B_dem, test_mask, test_dem, model_type)
+
+        # Splitting points
+        if self.rpt_search == "Dynp":
+            self.split_points = [rpt.Dynp(model=self.rpt_model, min_size=3, jump=5).fit(
+                B_ts[0]).predict(n_bkps=self.n_bkps)] * self.num_ts_ftr
+        elif self.rpt_search == "Pelt":
+            self.split_points = [rpt.Pelt(model=self.rpt_model).fit(B_ts[0]).predict(
+                pen=self.rpt_pen)] * self.num_ts_ftr
+        elif self.rpt_search == "KernelCPD":
+            self.split_points = [rpt.KernelCPD(kernel="linear", min_size=2).fit(B_ts[0]).predict(
+                n_bkps=self.n_bkps)] * self.num_ts_ftr
+        elif self.rpt_search == "Binseg":
+            self.split_points = [rpt.Binseg(model=self.rpt_model).fit(B_ts[0]).predict(
+                n_bkps=self.n_bkps)] * self.num_ts_ftr
+        elif self.rpt_search == "BottomUp":
+            self.split_points = [rpt.BottomUp(model=self.rpt_model).fit(B_ts[0]).predict(
+                n_bkps=self.n_bkps)] * self.num_ts_ftr
+        elif self.rpt_search == "Window":
+            self.split_points = [rpt.Window(model=self.rpt_model, width=40).fit(B_ts[0]).predict(
+                n_bkps=self.n_bkps)] * self.num_ts_ftr
+
+        print("Split points")
+        print(self.split_points)
+
+        self.prepare_data(dynamic=True)
+
+    def get_ts_x_(self, x):
+        return np.zeros((x.shape[0], self.num_ts_step, self.num_ts_ftr))
+
+    def get_ts_x(self, x):
+        ts_x = x[:, self.num_dem_ftr:].copy()
+
+        temp_ts_x = np.zeros((ts_x.shape[0], max(self.num_window), self.num_ts_ftr), dtype=int)
+        for i in range(self.num_ts_ftr):
+            temp_ts_x[:, :self.num_window[i], i] = ts_x[:, sum(self.num_window[:i]):sum(
+                self.num_window[:i + 1])]
+        return temp_ts_x
+
+    def get_tstep(self, x):
+        return np.ones((x.shape[0], self.num_ts_step, 1)) * \
+            np.reshape(np.arange(0, self.num_ts_step), (1, self.num_ts_step, 1))
+
+    def creating_data(self, x, ts_x, ts_x_, mask_x_, start_ind=0):
+        for i in range(x.shape[0]):
+            # creating time series data
+            for j in range(self.num_ts_ftr):
+                # Finding the corresponding time interval
+                wind_t = np.searchsorted(self.split_points[j], np.arange(
+                    self.num_ts_step))  ## Specific to Binary Time Window
+                for t in range(self.num_ts_step):
+                    ind = ts_x[i, wind_t[t], j]
+                    ts_x_[i, t, j] = self.all_ts[ind, t, j]
+                    mask_x_[i, t, j] = None if self.all_mask is None else self.all_mask[ind, t, j]
+        return ts_x_, mask_x_
+
+    def shap_values(self, num_output=1, nsamples_in_loop='auto', nsamples_final='auto'):
+        """shap value for dynamic window."""
+
+        flag = 1
+        while flag:
+            flag = 0
+
+            # Updating the number of time windows for each time series feature
+            self.num_window = [len(self.split_points[i]) for i in range(self.num_ts_ftr)]
+
+            # Updating converted data for SHAP
+            self.background_data = data_prepare(self.B_ts,
+                                                self.num_dem_ftr,
+                                                self.num_window,
+                                                self.num_ts_ftr,
+                                                dynamic=True)
+            self.test_data = data_prepare(self.test_ts,
+                                          self.num_dem_ftr,
+                                          self.num_window,
+                                          self.num_ts_ftr,
+                                          len(self.B_ts),
+                                          dynamic=True)
+
+            # Running SHAP
+            if nsamples_in_loop == 'auto':
+                nsamples = 2 * sum(self.num_window)
+            else:
+                nsamples = nsamples_in_loop
+
+            self.explainer = shap.KernelExplainer(self.wrapper_predict, self.background_data)
+            shap_values = self.explainer.shap_values(self.test_data, nsamples=nsamples)
+            shap_values = np.array(shap_values)
+            dem_phi = shap_values[0, :, :self.num_dem_ftr]  # Extracting dem SHAP values
+            ts_shap_values = shap_values[:, :, self.num_dem_ftr:]  # Extracting ts SHAP values
+
+            # Checking the maximum number of windows condition
+            if max(self.num_window) >= self.n_w: break
+
+            for i in range(self.num_ts_ftr):
+                S = set(self.split_points[i])
+                for j in range(self.num_window[i]):
+                    if abs(ts_shap_values[0, 0, sum(self.num_window[:i]) + j]) > self.delta:
+                        S.add(int(self.split_points[i][j] / 2) if j == 0 else int(
+                            (self.split_points[i][j - 1] + self.split_points[i][j]) / 2))
+                if set(S) != set(self.split_points[i]):
+                    flag += 1
+                    self.split_points[i] = list(S)
+                    self.split_points[i].sort()
+
+        # Running SHAP with large number of samples for the final evaluation of Shapely values
+        self.explainer = shap.KernelExplainer(self.wrapper_predict, self.background_data)
+        shap_values = self.explainer.shap_values(self.test_data, nsamples=nsamples_final)
+        shap_values = np.array(shap_values)
+        dem_phi = shap_values[0, :, :self.num_dem_ftr]  # Extracting dem SHAP values
+        ts_shap_values = shap_values[:, :, self.num_dem_ftr:]  # Extracting ts SHAP values
+
+        # Assigning Shap values to each single time step
+        ts_phi = np.zeros((len(self.test_ts), self.num_ts_step, self.num_ts_ftr))
+        for i in range(self.num_ts_ftr):
+            for j in range(self.num_window[i]):
+                # This part of the code is written in a way that each splitting point belongs to the time window that starts from that point
+                # For the last time window, both splitting points at the end and start of the time window belong to it
+                start_ind = 0 if j == 0 else self.split_points[i][j - 1]
+                end_ind = self.split_points[i][j] + int((j + 1) / self.num_window[i])
+                ts_phi[0, start_ind:end_ind, i] = ts_shap_values[0, :,
+                                                  sum(self.num_window[:i]) + j] / (
+                                                          end_ind - start_ind)
+        self.dem_phi = dem_phi
+        self.ts_phi = ts_phi
+
+        return ts_phi if self.num_dem_ftr == 0 else (dem_phi, ts_phi)
